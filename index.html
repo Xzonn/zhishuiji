@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>今天你关制水机了吗？</title>
+    <link href="bootstrap.min.css" rel="stylesheet" />
+    <style>
+      body {
+        height: 100vh;
+        flex-direction: column;
+      }
+
+      .time-box {
+        font-size: 12rem;
+        font-family: MiSans, "HarmonyOS Sans", "Open Sans", "Arial Black", system-ui, sans-serif;
+        font-weight: 900;
+        width: 100%;
+      }
+
+      .time-hour::after,
+      .time-minute::after {
+        content: ":";
+      }
+
+      .modal-body {
+        text-align: center;
+        font-size: 24rem;
+      }
+    </style>
+  </head>
+
+  <body class="d-flex justify-content-center gap-5">
+    <div class="container-fluid">
+      <div class="row mt-3">
+        <div class="col-3">
+          <label for="select-hour" class="form-label">时</label>
+          <select id="select-hour" class="form-select">
+            <option>0</option>
+            <option selected="selected">1</option>
+            <option>2</option>
+          </select>
+        </div>
+        <div class="col-3">
+          <label for="select-minute" class="form-label">分</label>
+          <select id="select-minute" class="form-select">
+            <option selected="selected">0</option>
+            <option>1</option>
+            <option>5</option>
+            <option>10</option>
+            <option>15</option>
+            <option>20</option>
+            <option>25</option>
+            <option>30</option>
+            <option>35</option>
+            <option>40</option>
+            <option>45</option>
+            <option>50</option>
+            <option>55</option>
+          </select>
+        </div>
+        <div class="col-3">
+          <label for="select-second" class="form-label">秒</label>
+          <select id="select-second" class="form-select">
+            <option selected="selected">0</option>
+            <option>1</option>
+            <option>5</option>
+            <option>10</option>
+            <option>15</option>
+            <option>20</option>
+            <option>25</option>
+            <option>30</option>
+            <option>35</option>
+            <option>40</option>
+            <option>45</option>
+            <option>50</option>
+            <option>55</option>
+          </select>
+        </div>
+        <div class="col-3">
+          <label for="select-item" class="form-label">关什么</label>
+          <select id="select-item" class="form-select">
+            <option selected="selected">制水机</option>
+            <option>加热套</option>
+            <option>水浴锅</option>
+            <option>超净台</option>
+            <option>超声</option>
+            <option>空调</option>
+          </select>
+        </div>
+      </div>
+      <div class="row mt-3">
+        <div class="col-9 d-grid">
+          <button class="time-start btn btn-primary" type="button">开始！</button>
+        </div>
+        <div class="col-3 d-grid">
+          <button class="time-end btn btn-primary" type="button">结束</button>
+        </div>
+      </div>
+      <div class="time-box d-inline-flex mt-3 justify-content-center">
+        <div class="time-hour">00</div>
+        <div class="time-minute">00</div>
+        <div class="time-second">00</div>
+      </div>
+      <div class="progress">
+        <div class="progress-bar progress-bar-striped progress-bar-animated"></div>
+      </div>
+    </div>
+    <div class="modal modal-xl fade" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">制水机该关了</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body"><img src="gaiguanle.svg" /></div>
+        </div>
+      </div>
+    </div>
+    <script src="jquery.min.js"></script>
+    <script src="bootstrap.min.js"></script>
+    <script>
+      $(() => {
+        const languages = ["zh", "ja", "en"];
+        const i18n = {
+          ja: {
+            制水机: "水フィルター",
+            加热套: "マントルヒーター",
+            水浴锅: "水浴鍋",
+            超净台: "クリーンベンチ",
+            超声: "超音波",
+            空调: "エアコン",
+          },
+          en: {
+            制水机: "Water filter",
+            加热套: "Heating Mantle",
+            水浴锅: "Water Bath",
+            超净台: "Clean Bench",
+            超声: "Ultrasonic",
+            空调: "Air Conditioner",
+          },
+        };
+        const template = {
+          zh: "$1该关了",
+          ja: "$1を閉じてください",
+          en: "Please turn off $1.",
+        };
+
+        const time_box = $(".time-box");
+        const modal = $(".modal");
+
+        const synth = window.speechSynthesis;
+        const utterance = new SpeechSynthesisUtterance();
+        let voices = {};
+        let voiceLangIndex = 0;
+        let isSpeaking = false;
+        window.utterance = utterance;
+        utterance.lang = "zh-CN";
+        utterance.rate = 1;
+        utterance.volume = 1;
+        utterance.onend = () => {
+          if (isSpeaking) {
+            start_speaking();
+          }
+        };
+
+        const init_voices = () => {
+          voiceLangIndex = 0;
+          for (const lang of languages) {
+            voices[lang] = [];
+          }
+          for (const voice of synth.getVoices()) {
+            const lang = voice.lang.substring(0, 2);
+            if (!languages.includes(lang)) {
+              continue;
+            }
+            voices[lang].push(voice);
+          }
+        };
+
+        const start_speaking = () => {
+          if (synth.speaking) {
+            synth.cancel();
+          }
+          const lang = languages[voiceLangIndex];
+          voiceLangIndex = (voiceLangIndex + 1) % languages.length;
+          utterance.voice = voices[lang][Math.floor(Math.random() * voices[lang].length)];
+
+          const item = $("#select-item").val();
+          const i18n_item = (i18n[lang] || {})[item] || item;
+          const text = template[lang].replace("$1", i18n_item);
+
+          utterance.text = text;
+          synth.speak(utterance);
+          isSpeaking = true;
+        };
+        const stop_speaking = () => {
+          if (synth.speaking) {
+            synth.cancel();
+          }
+          isSpeaking = false;
+        };
+
+        let interval = 0;
+        window.addEventListener("resize", () => {
+          time_box.css("font-size", `${time_box.width() / 5}px`);
+        });
+        window.dispatchEvent(new Event("resize"));
+        window.addEventListener("click", (event) => {
+          if ($(event.target).is("button.time-start")) {
+            init_voices();
+            clearInterval(interval);
+            const hour = parseInt($("#select-hour").val());
+            const minute = parseInt($("#select-minute").val());
+            const second = parseInt($("#select-second").val());
+            const start_time = new Date();
+            const end_time = new Date(+start_time + hour * 60 * 60 * 1000 + minute * 60 * 1000 + second * 1000);
+
+            interval = setInterval(() => {
+              const now = new Date();
+              const diff = end_time - now;
+              const percentage = 100 - (diff / (end_time - start_time)) * 100;
+              if (diff > 0) {
+                $(".progress-bar").css("width", `${percentage}%`).addClass("progress-bar-animated");
+                const hour = Math.floor(diff / 1000 / 60 / 60);
+                const minute = Math.floor((diff / 1000 / 60) % 60);
+                const second = Math.floor((diff / 1000) % 60);
+                $(".time-hour").text(hour.toString().padStart(2, "0"));
+                $(".time-minute").text(minute.toString().padStart(2, "0"));
+                $(".time-second").text(second.toString().padStart(2, "0"));
+              } else {
+                clearInterval(interval);
+                $(".progress-bar").css("width", `100%`).removeClass("progress-bar-animated");
+                $(".time-hour").text("00");
+                $(".time-minute").text("00");
+                $(".time-second").text("00");
+
+                const item = $("#select-item").val();
+                $(".modal-title").text(`${item}该关了`);
+                start_speaking();
+
+                new bootstrap.Modal(".modal").show();
+              }
+            }, 100);
+            try {
+              const wakeLock = navigator.wakeLock.request("screen");
+            } catch (err) {
+              console.log(`${err.name}, ${err.message}`);
+            }
+          } else if ($(event.target).is("button.time-end")) {
+            clearInterval(interval);
+            $(".progress-bar").removeClass("progress-bar-animated");
+            stop_speaking();
+            new bootstrap.Modal(".modal").hide();
+          } else {
+            return;
+          }
+          event.preventDefault();
+          event.stopPropagation();
+        });
+
+        document.querySelector("#select-item").addEventListener("change", (event) => {
+          const item = event.target.value;
+          $("title").text(`今天你关${item}了吗？`);
+        });
+        modal[0].addEventListener("hidden.bs.modal", () => {
+          stop_speaking();
+        });
+      });
+    </script>
+  </body>
+</html>
